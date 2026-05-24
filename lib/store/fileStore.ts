@@ -1,37 +1,19 @@
-// Store files in localStorage for persistence across page refreshes
+// In-memory file store for the session
+// Note: data is cleared when the browser tab/window is closed
 import type { ProcessedFile } from "../../types";
 
-const KEY = "redactor_files";
+const files = new Map<string, ProcessedFile>();
 
-export function saveFile(file: ProcessedFile) {
-  const files = getAllFiles();
-  const idx = files.findIndex((f) => f.id === file.id);
-  if (idx >= 0) {
-    files[idx] = file;
-  } else {
-    files.push(file);
-  }
-  try {
-    localStorage.setItem(KEY, JSON.stringify(files));
-  } catch (e) {
-    // Storage full — remove oldest files
-    const trimmed = files.slice(files.length > 5 ? files.length - 5 : 0);
-    localStorage.setItem(KEY, JSON.stringify(trimmed));
-  }
+export function saveFile(file: ProcessedFile): void {
+  files.set(file.id, file);
 }
 
 export function getFile(id: string): ProcessedFile | null {
-  const files = getAllFiles();
-  return files.find((f) => f.id === id) ?? null;
+  return files.get(id) ?? null;
 }
 
 export function getAllFiles(): ProcessedFile[] {
-  try {
-    const raw = localStorage.getItem(KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+  return Array.from(files.values()).sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export function generateId(): string {
