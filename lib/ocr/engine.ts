@@ -1,17 +1,11 @@
-// OCR Engine — runs Tesseract in a Web Worker to avoid freezing the UI
+// OCR Engine — Tesseract singleton worker (main thread)
 import Tesseract from "tesseract.js";
 
 let worker: Tesseract.Worker | null = null;
 
 export async function getWorker(): Promise<Tesseract.Worker> {
   if (!worker) {
-    worker = await Tesseract.createWorker("eng", 1, {
-      logger: (m) => {
-        if (m.status === "recognizing text") {
-          console.log(`[OCR] ${Math.round((m.progress as number) * 100)}%`);
-        }
-      },
-    });
+    worker = await Tesseract.createWorker("eng");
   }
   return worker;
 }
@@ -35,7 +29,7 @@ export async function recognizeText(imageDataUrl: string): Promise<{
     .map((word) => ({
       text: word.text,
       bbox: {
-        x: word.bbox.x0 / 100, // normalize to 0-1
+        x: word.bbox.x0 / 100,
         y: word.bbox.y0 / 100,
         width: (word.bbox.x1 - word.bbox.x0) / 100,
         height: (word.bbox.y1 - word.bbox.y0) / 100,
