@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Shield, Upload, FileText, AlertCircle } from "lucide-react";
 
 export default function HomePage() {
+  const router = useRouter();
   const [dragOver, setDragOver] = useState(false);
 
   function handleFile(file: File) {
@@ -11,9 +13,7 @@ export default function HomePage() {
       alert("Please upload a PDF or image file.");
       return;
     }
-    const formData = new FormData();
-    formData.append("file", file);
-    // Store in localStorage via a data URL approach for demo
+    // Store file in sessionStorage for the dashboard to pick up
     const reader = new FileReader();
     reader.onload = () => {
       sessionStorage.setItem("uploadedFile", JSON.stringify({
@@ -21,7 +21,7 @@ export default function HomePage() {
         dataUrl: reader.result,
         type: file.type,
       }));
-      window.location.href = "/dashboard";
+      router.push("/dashboard");
     };
     reader.readAsDataURL(file);
   }
@@ -55,16 +55,7 @@ export default function HomePage() {
             cursor: "pointer",
             marginBottom: 24,
           }}
-          onClick={() => {
-            const input = document.createElement("input");
-            input.type = "file";
-            input.accept = ".pdf,image/*";
-            input.onchange = (e) => {
-              const file = (e.target as HTMLInputElement).files?.[0];
-              if (file) handleFile(file);
-            };
-            input.click();
-          }}
+          onClick={() => router.push("/dashboard")}
         >
           <Upload size={40} style={{ marginBottom: 16, color: "#94a3b8" }} />
           <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>

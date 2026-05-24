@@ -1,9 +1,10 @@
 // PDF Renderer — converts PDF pages to image data URLs
 import * as pdfjsLib from "pdfjs-dist";
-import { PDFPage } from "../../types";
+import type { PDFPage } from "../../types";
 
+// Use the CDN worker to avoid version mismatch during Next.js build
 pdfjsLib.GlobalWorkerOptions.workerSrc =
-  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs";
+  `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs`;
 
 export async function extractPDFPages(
   data: ArrayBuffer,
