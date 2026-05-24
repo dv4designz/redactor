@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useState, Suspense, useCallback } from "react";
+import { useEffect, useState, Suspense, useCallback, useRef } from "react";
 import { Shield, Download, ChevronLeft, ChevronRight, Check, X, FileText, Plus, MousePointer, Square } from "lucide-react";
 import { getAllFiles, getFile } from "../../lib/store/fileStore";
 import type { ProcessedFile, DetectedItem } from "../../types";
@@ -22,6 +22,19 @@ function ReviewContent() {
   const [selecting, setSelecting] = useState(false);
   const [selectionRect, setSelectionRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
+
+  // Image ref for manual selection coordinate calculation
+  const imageRef = useRef<HTMLImageElement | null>(null);
+
+  const getImageCoords = useCallback((clientX: number, clientY: number) => {
+    const img = imageRef.current;
+    if (!img) return null;
+    const rect = img.getBoundingClientRect();
+    return {
+      x: (clientX - rect.left) / rect.width,
+      y: (clientY - rect.top) / rect.height,
+    };
+  }, []);
 
   useEffect(() => {
     const f = getFile(fileId);
@@ -74,19 +87,9 @@ function ReviewContent() {
     }
   }
 
-  // Manual selection handlers
-  const getImageCoords = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const imgEl = e.currentTarget.querySelector("img");
-    if (!imgEl) return null;
-    const rect = imgEl.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-    return { x, y, clientX: e.clientX, clientY: e.clientY };
-  }, []);
-
   function handleMouseDown(e: React.MouseEvent<HTMLDivElement>) {
     if (!manualMode) return;
-    const coords = getImageCoords(e);
+    const coords = getImageCoords(e.clientX, e.clientY);
     if (!coords) return;
     setSelecting(true);
     setSelectionStart(coords);
@@ -95,7 +98,7 @@ function ReviewContent() {
 
   function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
     if (!manualMode || !selecting || !selectionStart) return;
-    const coords = getImageCoords(e);
+    const coords = getImageCoords(e.clientX, e.clientY);
     if (!coords) return;
     setSelectionRect({
       x: Math.min(selectionStart.x, coords.x),
@@ -108,12 +111,10 @@ function ReviewContent() {
   function handleMouseUp(e: React.MouseEvent<HTMLDivElement>) {
     if (!manualMode || !selecting || !selectionRect || !file) return;
     setSelecting(false);
-    // Only add if selection is meaningful (not a tiny accidental click)
     if (selectionRect.width < 0.005 || selectionRect.height < 0.005) {
       setSelectionRect(null);
       return;
     }
-    // Add as a manual item
     const manualItem: DetectedItem = {
       id: `manual-${Date.now()}`,
       type: "NAME",
@@ -132,6 +133,10 @@ function ReviewContent() {
     if (status === "rejected") return "#22c55e";
     return "#eab308";
   }
+
+  // Sync imageRef with current page's image
+  const [imgKey, setImgKey] = useState(0);
+  useEffect(() => { setImgKey((k) => k + 1); }, [currentPage, fileId]);
 
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc" }}>
@@ -165,7 +170,6 @@ function ReviewContent() {
         </div>
 
         <div style={{ display: "flex", gap: 6 }}>
-          {/* Manual selection toggle */}
           <button
             className={`btn ${manualMode ? "btn-primary" : "btn-secondary"}`}
             style={{ fontSize: 12, padding: "5px 10px" }}
@@ -219,6 +223,8 @@ function ReviewContent() {
           >
             <div style={{ position: "relative", display: "inline-block" }}>
               <img
+                key={imgKey}
+                ref={(el) => { imageRef.current = el; }}
                 src={page.imageDataUrl}
                 alt={`Page ${currentPage + 1}`}
                 style={{
@@ -249,7 +255,7 @@ function ReviewContent() {
                       top,
                       width: w,
                       height: h,
-                      background: isAccepted ? "rgba(0,0,0,0.85)" : "rgba(0,0,0,0.25)",
+                      background: isAccepted ? "rgba(0,0,0,0.85)" : "rgba(0,0,0,0.2)",
                       border: `2px solid ${isAccepted ? "#000" : item.status === "rejected" ? "#22c55e" : "#eab308"}`,
                       borderRadius: 2,
                       cursor: "pointer",
